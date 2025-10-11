@@ -22,7 +22,7 @@ def create_app(test_config=None):
         return "Be cool, man, be coooool! You're almost a FSND grad!"
     
     @app.route('/lebowski')
-    def be_cool():
+    def lebowski():
         return "I'm not Mr Lebowski, I'm The Dude, so that's what you call me."
 
     return app
