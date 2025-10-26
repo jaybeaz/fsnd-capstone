@@ -3,8 +3,7 @@ from flask import Flask, request, abort, jsonify
 from models import setup_db, Actors, Movies, db
 from flask_cors import CORS
 
-#from .database.models import 
-#from .auth.auth import AuthError, requires_auth
+from auth import AuthError, requires_auth
 
 def create_app(test_config=None):
 
@@ -28,13 +27,18 @@ def create_app(test_config=None):
     @app.route('/lebowski')
     def lebowski():
         return '''Let me explain something to you. Um, I am not "Mr. Lebowski". You're Mr. Lebowski. I'm the Dude. So that's what you call me. You know, that or, uh, His Dudeness, or uh, Duder, or El Duderino if you're not into the whole brevity thing.'''
+    
+    @app.route('/thejesus')
+    def thejesus():
+        return '''Are you ready to be fucked, man? I see you rolled your way into the semis. Dios mio, man. Liam and me, we're gonna fuck you up.'''
 
     return app
 
 app = create_app()
 
 @app.route('/actors', methods=["GET"])
-def get_actors():
+@requires_auth('get:actors')
+def get_actors(payload):
     actors = Actors.query.order_by(Actors.id).all()
     formatted_actors = [actor.format() for actor in actors]
     return jsonify(
@@ -46,7 +50,8 @@ def get_actors():
     )
 
 @app.route('/movies', methods=["GET"])
-def get_movies():
+@requires_auth('get:movies')
+def get_movies(payload):
     movies = Movies.query.order_by(Movies.id).all()
     formatted_movies = [movie.format() for movie in movies]
     return jsonify(
@@ -58,8 +63,8 @@ def get_movies():
     )
 
 @app.route('/actors', methods=["POST"])
-#@requires_auth('create:actors')
-def create_actors():
+@requires_auth('post:actors')
+def create_actors(payload):
     body = request.get_json()
     actor_name = body.get("name", None)
     actor_age = body.get("age", None)
@@ -84,8 +89,8 @@ def create_actors():
         abort(422)
 
 @app.route('/movies', methods=["POST"])
-#@requires_auth('create:movies')
-def create_movies():
+@requires_auth('post:movies')
+def create_movies(payload):
     body = request.get_json()
     movie_title = body.get("title", None)
     movie_release_date = body.get("release_date", None)
@@ -109,8 +114,8 @@ def create_movies():
         abort(422)
 
 @app.route('/actors/<int:actor_id>', methods=["PATCH"])
-#@requires_auth('patch:actors')
-def update_actors(actor_id):
+@requires_auth('patch:actors')
+def update_actors(payload, actor_id):
     body = request.get_json()
     if not body:
         abort(400)
@@ -141,8 +146,8 @@ def update_actors(actor_id):
         abort(422)
 
 @app.route('/movies/<int:movie_id>', methods=["PATCH"])
-#@requires_auth('patch:movies')
-def update_movies(movie_id):
+@requires_auth('patch:movies')
+def update_movies(payload, movie_id):
     body = request.get_json()
     if not body:
         abort(400)
@@ -168,8 +173,8 @@ def update_movies(movie_id):
         abort(422)
 
 @app.route('/actors/<int:actor_id>', methods=["DELETE"])
-#@requires_auth('delete:actors')
-def delete_actors(actor_id):
+@requires_auth('delete:actors')
+def delete_actors(payload, actor_id):
     try:
         actor = Actors.query.filter(Actors.id == actor_id).one_or_none()
         if actor is None:
@@ -183,8 +188,8 @@ def delete_actors(actor_id):
         abort(422)
 
 @app.route('/movies/<int:movie_id>', methods=["DELETE"])
-#@requires_auth('delete:movies')
-def delete_movies(movie_id):
+@requires_auth('delete:movies')
+def delete_movies(payload, movie_id):
     try:
         movie = Movies.query.filter(Movies.id == movie_id).one_or_none()
         if movie is None:
@@ -196,6 +201,32 @@ def delete_movies(movie_id):
         }, 200)
     except Exception as e:
         abort(422)
+
+# Error Handlers Below:
+
+@app.errorhandler(AuthError)
+def auth_error_handler(e):
+    return jsonify({
+        "success": False,
+        "error": e.status_code,
+        "message": e.error['description']
+    }), e.status_code
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        "success": False, 
+        "error": 404,
+        "message": "resource not found"
+        }), 404
+
+@app.errorhandler(422)
+def unprocessable(error):
+    return jsonify({
+        "success": False,
+        "error": 422,
+        "message": "unprocessable"
+    }), 422
 
 if __name__ == '__main__':
     app.debug = True
